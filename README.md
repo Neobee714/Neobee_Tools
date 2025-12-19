@@ -142,4 +142,4 @@ The developer of this tool is not responsible for any damage caused by the misus
 
 ---
 
-**Developed by [Neobee714**](https://www.google.com/search?q=https://github.com/Neobee714)
+Developed by [Neobee714](https://www.google.com/search?q=https://github.com/Neobee714)

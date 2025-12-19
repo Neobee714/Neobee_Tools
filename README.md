@@ -19,9 +19,9 @@
 ## 📦 安装 (Installation)
 
 1. 克隆仓库：
-   ```bash
-   git clone [https://github.com/Neobee714/Neobee_Tools.git](https://github.com/Neobee714/Neobee_Tools.git)
-   cd Neobee_Tools
+```bash
+git clone [https://github.com/Neobee714/Neobee_Tools.git](https://github.com/Neobee714/Neobee_Tools.git)
+cd Neobee_Tools
 
 ```
 

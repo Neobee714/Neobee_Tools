@@ -1,6 +1,10 @@
-# Neobee 🐝
+# Neobee
 
 A powerful multi-threaded login brute force tool with real-time progress display and flexible attack modes.
+
+> **Neobee** = 牛逼 (niú bī) = Awesome/Badass
+> 
+> This tool is named Neobee because it's fucking awesome! 🔥
 
 [English](#english) | [中文](#中文)
 
@@ -33,7 +37,7 @@ A powerful multi-threaded login brute force tool with real-time progress display
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/Neobee.git
+git clone https://github.com/Neobee714/Neobee.git
 cd Neobee
 pip install requests
 ```
@@ -190,7 +194,7 @@ MIT License
 ### 安装
 
 ```bash
-git clone https://github.com/yourusername/Neobee.git
+git clone https://github.com/Neobee714/Neobee.git
 cd Neobee
 pip install requests
 ```
